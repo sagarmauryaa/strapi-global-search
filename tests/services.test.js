@@ -1,0 +1,296 @@
+/**
+ * Exercises the global-search plugin services against a fake Strapi instance.
+ * No Strapi boot, no database, no test runner: `node tests/services.test.js`.
+ */
+'use strict';
+
+const assert = require('assert');
+
+const load = (name) => require(`../server/services/${name}`);
+
+const contentTypes = {
+  'api::article.article': {
+    uid: 'api::article.article',
+    kind: 'collectionType',
+    info: { displayName: 'Article', singularName: 'article' },
+    options: { draftAndPublish: true },
+    pluginOptions: { i18n: { localized: true } },
+    attributes: {
+      title: { type: 'string' },
+      slug: { type: 'uid' },
+      body: { type: 'richtext' },
+      views: { type: 'integer' },
+      cover: { type: 'media' },
+      author: { type: 'relation', relation: 'oneToOne' },
+      payload: { type: 'json' },
+      secret: { type: 'string', private: true },
+      password: { type: 'string' },
+      zone: { type: 'dynamiczone', components: ['shared.seo'] },
+      seo: { type: 'component', component: 'shared.seo' },
+      tags: { type: 'component', component: 'shared.tag', repeatable: true },
+    },
+  },
+  'api::homepage.homepage': {
+    uid: 'api::homepage.homepage',
+    kind: 'singleType',
+    info: { displayName: 'Homepage' },
+    options: { draftAndPublish: false },
+    attributes: { name: { type: 'string' }, intro: { type: 'text' } },
+  },
+  'api::secret.secret': {
+    uid: 'api::secret.secret',
+    kind: 'collectionType',
+    info: { displayName: 'Secret' },
+    attributes: { blob: { type: 'json' } }, // nothing searchable
+  },
+};
+
+const components = {
+  'shared.seo': {
+    attributes: {
+      metaTitle: { type: 'string' },
+      metaDescription: { type: 'text' },
+      social: { type: 'component', component: 'shared.social' },
+    },
+  },
+  // Deliberately cyclic: social -> seo -> social ...
+  'shared.social': {
+    attributes: { handle: { type: 'string' }, seo: { type: 'component', component: 'shared.seo' } },
+  },
+  'shared.tag': { attributes: { label: { type: 'string' } } },
+};
+
+const rows = {
+  'api::article.article': [
+    { id: 7, title: 'Careers', slug: 'careers', body: 'x', updatedAt: '2026-01-01', publishedAt: '2026-01-01', locale: 'en' },
+    { id: 12, title: 'Career advice', slug: 'career-advice', body: 'y', updatedAt: '2026-02-01', publishedAt: null, locale: 'en' },
+    { id: 3, title: 'Random', slug: 'random', body: 'we are hiring for careers now', updatedAt: '2026-03-01', publishedAt: '2026-03-01', locale: 'en' },
+    { id: 9, title: 'Nested', slug: 'nested', body: 'z', updatedAt: '2026-04-01', locale: 'en', seo: { metaTitle: 'careers page' } },
+    { id: 55, title: 'Repeatable', slug: 'rep', body: 'z', updatedAt: '2026-05-01', locale: 'en', tags: [{ label: 'other' }, { label: 'careers team' }] },
+  ],
+  'api::homepage.homepage': { id: 1, name: 'careers', intro: 'hello', updatedAt: '2026-01-05' },
+};
+
+let lastParams = null;
+const services = {};
+
+const strapi = {
+  contentTypes,
+  components,
+  config: { get: () => ({}) },
+  store: () => ({ get: async () => ({}), set: async () => {} }),
+  log: { debug() {}, warn(msg) { console.log('  [warn]', msg); }, error(msg) { console.log('  [error]', msg); } },
+  plugin: (id) => {
+    if (id === 'content-manager') {
+      return {
+        service: () => ({
+          findConfiguration: async (ct) => ({
+            settings: { mainField: ct.uid === 'api::article.article' ? 'title' : 'name' },
+          }),
+        }),
+      };
+    }
+
+    return { service: (name) => services[name] };
+  },
+  entityService: {
+    findMany: async (uid, params) => {
+      lastParams = { uid, params };
+      const data = rows[uid];
+      if (!data) return contentTypes[uid].kind === 'singleType' ? null : [];
+      return data;
+    },
+  },
+  admin: { services: { permission: { actionProvider: { registerMany() {} } } } },
+};
+
+['schema', 'query', 'ranking', 'permissions', 'settings', 'search'].forEach((name) => {
+  services[name] = load(name)({ strapi });
+});
+
+const run = async () => {
+  let failures = 0;
+  const check = (label, fn) => {
+    try {
+      fn();
+      console.log(`  PASS  ${label}`);
+    } catch (error) {
+      failures += 1;
+      console.log(`  FAIL  ${label}\n        ${error.message}`);
+    }
+  };
+
+  console.log('\n== schema introspection ==');
+  const types = await services.schema.getSearchableContentTypes();
+  const article = types.find((t) => t.uid === 'api::article.article');
+  const homepage = types.find((t) => t.uid === 'api::homepage.homepage');
+
+  check('discovers collection + single types', () => assert.strictEqual(types.length, 2));
+  check('drops types with nothing searchable', () =>
+    assert.ok(!types.find((t) => t.uid === 'api::secret.secret')));
+  check('resolves mainField from content-manager config', () =>
+    assert.strictEqual(article.mainField, 'title'));
+  check('detects single type kind', () => assert.strictEqual(homepage.kind, 'singleType'));
+  check('detects i18n + draft&publish', () =>
+    assert.ok(article.localized && article.draftAndPublish));
+  check('collects id fields', () => assert.deepStrictEqual(article.idFields, ['slug']));
+  check('collects top-level string fields, minus mainField/id fields', () =>
+    assert.deepStrictEqual(article.topLevelFields.sort(), ['body']));
+  check('skips media/relation/json/dynamiczone/private/password', () => {
+    const all = [...article.topLevelFields, ...article.nestedFields].join(',');
+    ['cover', 'author', 'payload', 'secret', 'password', 'zone', 'views'].forEach((name) =>
+      assert.ok(!all.includes(name), `${name} should not be searchable`));
+  });
+  check('walks into components (depth 1 + 2)', () => {
+    assert.ok(article.nestedFields.includes('seo.metaTitle'));
+    assert.ok(article.nestedFields.includes('seo.social.handle'));
+    assert.ok(article.nestedFields.includes('tags.label'));
+  });
+  check('breaks component cycles instead of hanging', () =>
+    assert.ok(!article.nestedFields.some((p) => p.split('.').length > 4)));
+
+  console.log('\n== query builder ==');
+  const filtersText = services.query.buildFilters(article, 'careers');
+  const filtersNumeric = services.query.buildFilters(article, '42');
+
+  check('no $eq on numeric id for a text query', () =>
+    assert.ok(!JSON.stringify(filtersText).includes('"$eq"')));
+  check('adds id $eq for a numeric query', () =>
+    assert.deepStrictEqual(filtersNumeric.$or[0], { id: { $eq: 42 } }));
+  check('nests component paths', () =>
+    assert.ok(
+      filtersText.$or.some(
+        (c) => c.seo && c.seo.social && c.seo.social.handle && c.seo.social.handle.$containsi === 'careers'
+      )
+    ));
+  check('builds a nested populate tree only for searched components', () => {
+    const populate = services.query.buildPopulate(['seo.metaTitle', 'seo.social.handle', 'tags.label']);
+    assert.deepStrictEqual(populate, {
+      seo: { populate: { social: true } },
+      tags: true,
+    });
+  });
+
+  const params = services.query.buildParams(article, {
+    query: 'careers',
+    locale: 'all',
+    limit: 20,
+    includeDrafts: true,
+  });
+  check('projects a bounded field list (no populate: *)', () => {
+    assert.ok(params.fields.includes('title') && params.fields.includes('publishedAt'));
+    assert.ok(!params.fields.includes('id'));
+  });
+  check('passes publicationState + locale for i18n/D&P types', () => {
+    assert.strictEqual(params.publicationState, 'preview');
+    assert.strictEqual(params.locale, 'all');
+  });
+  check('omits locale/publicationState for plain types', () => {
+    const plain = services.query.buildParams(homepage, { query: 'x', limit: 5, includeDrafts: true });
+    assert.ok(!('locale' in plain) && !('publicationState' in plain));
+  });
+
+  console.log('\n== ranking ==');
+  const tier = (entry) => services.ranking.score(entry, article, 'careers').tier;
+  check('id exact beats everything', () =>
+    assert.strictEqual(services.ranking.score({ id: 7, slug: 'careers' }, article, 'careers').tier, 0));
+  check('name exact -> tier 2', () => assert.strictEqual(tier({ id: 1, title: 'Careers' }), 2));
+  check('name starts-with -> tier 3', () => assert.strictEqual(tier({ id: 1, title: 'Careers page' }), 3));
+  check('name contains -> tier 4', () => assert.strictEqual(tier({ id: 1, title: 'Our careers' }), 4));
+  check('other field -> tier 5', () =>
+    assert.strictEqual(tier({ id: 1, title: 'x', body: 'see careers' }), 5));
+  check('nested component field -> tier 6', () =>
+    assert.strictEqual(tier({ id: 1, title: 'x', seo: { metaTitle: 'careers' } }), 6));
+  check('repeatable component values are reachable', () =>
+    assert.strictEqual(tier({ id: 1, title: 'x', tags: [{ label: 'no' }, { label: 'careers' }] }), 6));
+  check('snippet is extracted and de-marked-up', () => {
+    const scored = services.ranking.score(
+      { id: 1, title: 'x', body: '<p>we are hiring for careers now</p>' },
+      article,
+      'careers'
+    );
+    assert.ok(scored.matchedSnippet.includes('careers'));
+    assert.ok(!scored.matchedSnippet.includes('<p>'));
+    assert.strictEqual(scored.matchedFieldLabel, 'Body');
+  });
+
+  console.log('\n== search end to end ==');
+  const result = await services.search.search({ query: 'careers', pageSize: 10 });
+  const order = result.results.map((h) => `${h.contentTypeUid}#${h.id}:${h.tierLabel}`);
+  console.log('  order:', order.join('\n         '));
+
+  check('ranks id > name-exact > starts-with > contains > field > nested', () =>
+    assert.deepStrictEqual(
+      result.results.map((h) => h.tier),
+      [...result.results.map((h) => h.tier)].sort((a, b) => a - b)
+    ));
+  check('slug "careers" wins the top spot', () =>
+    assert.strictEqual(result.results[0].id, 7));
+  check('single type is included and linked correctly', () => {
+    const single = result.results.find((h) => h.kind === 'singleType');
+    assert.ok(single, 'homepage single type missing');
+    assert.strictEqual(single.adminUrl, '/content-manager/singleType/api::homepage.homepage');
+  });
+  check('collection links carry the locale', () =>
+    assert.strictEqual(
+      result.results.find((h) => h.id === 7).adminUrl,
+      '/content-manager/collectionType/api::article.article/7?plugins[i18n][locale]=en'
+    ));
+  check('draft/published status is reported', () => {
+    const draft = result.results.find((h) => h.id === 12);
+    assert.strictEqual(draft.status, 'draft');
+  });
+  check('groups summarise per content type', () =>
+    assert.strictEqual(result.groups.reduce((sum, g) => sum + g.count, 0), result.pagination.total));
+
+  const short = await services.search.search({ query: 'a' });
+  check('queries below minChars return nothing', () =>
+    assert.strictEqual(short.results.length, 0));
+
+  const wildcard = await services.search.search({ query: '%%%%' });
+  check('a bare wildcard query cannot match everything', () =>
+    assert.strictEqual(wildcard.results.length, 0));
+
+  const denied = await services.search.search({
+    query: 'careers',
+    userAbility: { can: (action, uid) => uid === 'api::homepage.homepage' },
+  });
+  check('RBAC filter hides content types the user cannot read', () =>
+    assert.ok(denied.results.every((h) => h.contentTypeUid === 'api::homepage.homepage')));
+
+  const filtered = await services.search.search({
+    query: 'careers',
+    types: ['api::homepage.homepage'],
+  });
+  check('type filter is honoured', () =>
+    assert.ok(filtered.results.every((h) => h.contentTypeUid === 'api::homepage.homepage')));
+
+  const paged = await services.search.search({ query: 'careers', page: 2, pageSize: 2 });
+  check('pagination slices the ranked set', () => {
+    assert.strictEqual(paged.pagination.page, 2);
+    assert.strictEqual(paged.results.length, 2);
+    assert.notStrictEqual(paged.results[0].id, result.results[0].id);
+  });
+
+  console.log('\n== resilience ==');
+  const original = strapi.entityService.findMany;
+  strapi.entityService.findMany = async (uid, p) => {
+    if (uid === 'api::article.article') throw new Error('boom');
+    return original(uid, p);
+  };
+  const partial = await services.search.search({ query: 'careers' });
+  strapi.entityService.findMany = original;
+
+  check('one broken content type does not fail the whole search', () => {
+    assert.ok(partial.results.length > 0);
+    assert.strictEqual(partial.meta.failedTypes.length, 1);
+  });
+
+  console.log(`\n${failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`}\n`);
+  process.exit(failures === 0 ? 0 : 1);
+};
+
+run().catch((error) => {
+  console.error('harness crashed:', error);
+  process.exit(1);
+});

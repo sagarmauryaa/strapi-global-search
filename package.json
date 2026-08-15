@@ -1,0 +1,80 @@
+{
+  "name": "strapi-global-search",
+  "version": "1.0.0",
+  "description": "Spotlight-style global search across every collection type and single type in the Strapi v4 admin panel. Zero configuration.",
+  "keywords": [
+    "strapi",
+    "strapi-plugin",
+    "search",
+    "global-search",
+    "spotlight",
+    "command-palette",
+    "admin"
+  ],
+  "strapi": {
+    "name": "global-search",
+    "kind": "plugin",
+    "displayName": "Global Search",
+    "description": "Search every content type from one place, with a Cmd+K palette.",
+    "icon": "search"
+  },
+  "main": "./strapi-server.js",
+  "scripts": {
+    "test": "node tests/services.test.js"
+  },
+  "files": [
+    "admin",
+    "server",
+    "strapi-admin.js",
+    "strapi-server.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@strapi/design-system": "^1.6.3",
+    "@strapi/helper-plugin": "^4.15.0",
+    "@strapi/icons": "^1.6.3",
+    "prop-types": "^15.7.2"
+  },
+  "devDependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^5.3.4",
+    "styled-components": "^5.3.6"
+  },
+  "peerDependencies": {
+    "@strapi/strapi": "^4.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "^5.2.0",
+    "styled-components": "^5.2.1"
+  },
+  "author": {
+    "name": "Sagar Maurya",
+    "email": "sagar68742@gmail.com",
+    "url": "https://github.com/sagarmauryaa"
+  },
+  "maintainers": [
+    {
+      "name": "Sagar Maurya",
+      "email": "sagar68742@gmail.com"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sagarmauryaa/strapi-global-search.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sagarmauryaa/strapi-global-search/issues"
+  },
+  "homepage": "https://github.com/sagarmauryaa/strapi-global-search#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "engines": {
+    "node": ">=18.0.0 <=20.x.x",
+    "npm": ">=6.0.0"
+  },
+  "license": "MIT"
+}

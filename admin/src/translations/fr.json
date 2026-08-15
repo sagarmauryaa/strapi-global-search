@@ -1,0 +1,6 @@
+{
+  "plugin.name": "Recherche globale",
+  "plugin.description": "Recherchez dans tous les types de contenu depuis un seul endroit.",
+  "settings.section": "Recherche globale",
+  "settings.link": "Configuration"
+}
