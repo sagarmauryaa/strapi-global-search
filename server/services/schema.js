@@ -102,9 +102,10 @@ module.exports = ({ strapi }) => ({
 
     const mainField = await this.resolveMainField(contentType);
 
-    const idFields = IDENTIFIER_FIELDS.filter((name) =>
-      this.isSearchableAttribute(name, attributes[name])
-    );
+    const idFields = [
+      'documentId',
+      ...IDENTIFIER_FIELDS.filter((name) => this.isSearchableAttribute(name, attributes[name])),
+    ];
 
     const topLevelFields = allPaths.filter(
       (path) => !path.includes('.') && path !== mainField && !idFields.includes(path)

@@ -13,7 +13,7 @@ module.exports = ({ strapi }) => ({
    * then the built-in defaults. Every key always resolves to something usable.
    */
   async get() {
-    const fromFile = strapi.config.get(`plugin.${PLUGIN_ID}`, {}) || {};
+    const fromFile = strapi.config.get(`plugin::${PLUGIN_ID}`, {}) || {};
     const fromStore = (await getStore(strapi).get({ key: STORE_KEY })) || {};
 
     return { ...defaults, ...fromFile, ...fromStore };

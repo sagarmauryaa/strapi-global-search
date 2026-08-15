@@ -1,5 +1,3 @@
-import pluginPkg from '../../package.json';
-
-const pluginId = pluginPkg.strapi.name;
+const pluginId = 'global-search';
 
 export default pluginId;

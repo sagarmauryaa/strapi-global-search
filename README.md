@@ -1,14 +1,16 @@
 # strapi-global-search
 
 [![npm version](https://img.shields.io/npm/v/strapi-global-search.svg)](https://www.npmjs.com/package/strapi-global-search)
-[![Strapi 4](https://img.shields.io/badge/strapi-v4-blue)](https://strapi.io)
+[![Strapi 5](https://img.shields.io/badge/strapi-v5-blue)](https://strapi.io)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Spotlight-style **global search** for the Strapi v4 admin: every collection type and single type, from a dedicated page or a <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>K</kbd> palette.
+Spotlight-style **global search** for the Strapi v5 admin: every collection type and single type, from a dedicated page or a <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>K</kbd> palette.
 
-Install it and rebuild the admin. It introspects your content types at boot and never needs to know your schema ahead of time.
+Install it, enable it, and start Strapi. It introspects your content types at boot and never needs to know your schema ahead of time.
 
 > Add a screenshot or short GIF of the palette here (`docs/palette.png`) once you have one.
+
+**Strapi 4:** use [`strapi-global-search@1.x`](https://www.npmjs.com/package/strapi-global-search/v/1.0.0). This major (`2.x`) is Strapi 5 only.
 
 ## Features
 
@@ -27,13 +29,17 @@ npm install strapi-global-search
 yarn add strapi-global-search
 ```
 
-Rebuild the admin panel:
+Enable it in `config/plugins.js` or `config/plugins.ts`:
 
-```bash
-npm run build && npm run develop
+```js
+module.exports = {
+  'global-search': {
+    enabled: true,
+  },
+};
 ```
 
-No `config/plugins.js` entry is required. Strapi picks the plugin up from `package.json` (`strapi.kind: "plugin"`).
+Then start your Strapi app (`npm run develop`). There is no extra build step for this package.
 
 This package has **no** `preinstall` / `install` / `postinstall` scripts and does not use git or remote URL dependencies. On [npm v12](https://github.blog/changelog/2026-07-08-npm-install-time-security-and-gat-bypass2fa-deprecation/) you do not need an `allowScripts` entry for `strapi-global-search`.
 
@@ -53,11 +59,12 @@ Ties break on an exact-case match, then the shortest matching value, then the mo
 
 ## Configuration
 
-Everything is optional and can be changed at **Settings → Global Search → Configuration**, or pinned in `config/plugins.js`:
+Everything is optional and can be changed at **Settings → Global Search → Configuration**, or pinned in `config/plugins.js` / `config/plugins.ts`:
 
 ```js
 module.exports = {
   'global-search': {
+    enabled: true,
     config: {
       minChars: 2,             // minimum query length
       debounce: 250,           // ms to wait after the last keystroke
@@ -93,7 +100,7 @@ Reported result counts reflect the capped set (`perTypeLimit` rows per type, `ma
 
 ## Limitations
 
-- **Dynamic zones** and **blocks** fields are not searched: Strapi v4's query engine cannot filter polymorphic JSON columns.
+- **Dynamic zones** and **blocks** fields are not searched: the query engine cannot filter polymorphic JSON columns.
 - Relations, media and JSON fields are not searched.
 - Only `api::` content types are searched — not plugin content types such as users-permissions users or uploaded files.
 
@@ -101,8 +108,8 @@ Reported result counts reflect the capped set (`perTypeLimit` rows per type, `ma
 
 | | |
 |---|---|
-| Strapi | `^4.0.0` (developed against 4.24.5) |
-| Node | 18 – 20 |
+| Strapi | `^5.0.0` (developed against 5.52.0) |
+| Node | 20 – 26 |
 | React | 18 |
 
 ## Publishing and supply chain

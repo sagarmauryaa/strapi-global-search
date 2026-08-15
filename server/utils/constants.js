@@ -10,7 +10,7 @@ const SEARCHABLE_SCALAR_TYPES = ['string', 'text', 'richtext', 'uid', 'email', '
 
 /**
  * Attribute types we deliberately never walk into.
- * - dynamiczone / blocks: Strapi v4's query engine cannot filter polymorphic JSON.
+ * - dynamiczone / blocks: the query engine cannot filter polymorphic JSON.
  * - relation / media: would explode the join graph; relations are shown, not searched.
  */
 const SKIPPED_ATTRIBUTE_TYPES = ['dynamiczone', 'blocks', 'json', 'relation', 'media', 'password'];
@@ -24,11 +24,11 @@ const BLOCKLISTED_ATTRIBUTE_NAMES = [
 ];
 
 /**
- * String attributes that identify an entry. `id` is handled separately because
- * it is numeric in v4. `documentId` is not native to v4 but is matched when a
- * schema happens to declare it, which keeps this plugin working on v5-style schemas.
+ * String attributes that identify an entry. `id` is numeric and handled
+ * separately. `documentId` is always queried in Strapi 5 even when it is not
+ * declared on the schema.
  */
-const IDENTIFIER_FIELDS = ['documentId', 'uid', 'slug', 'code', 'key'];
+const IDENTIFIER_FIELDS = ['uid', 'slug', 'code', 'key'];
 
 /** Used when the Content-Manager configuration has no mainField for a type. */
 const MAIN_FIELD_FALLBACKS = [

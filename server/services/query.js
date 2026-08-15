@@ -8,9 +8,9 @@ const nest = (path, condition) =>
     .reduce((acc, segment) => ({ [segment]: acc }), condition);
 
 /**
- * Turns the component segments of the nested paths into an entityService populate
- * tree, so the matched value is present on the returned entry and can be ranked
- * and excerpted. Only the components actually searched are populated.
+ * Turns the component segments of the nested paths into a Document Service
+ * populate tree, so the matched value is present on the returned entry and can
+ * be ranked and excerpted. Only the components actually searched are populated.
  */
 const buildPopulate = (paths) => {
   const tree = {};
@@ -50,18 +50,20 @@ module.exports = () => ({
   },
 
   /**
-   * One `$or` over every searchable path. `id` is numeric in v4, so it is only
-   * added — as an equality — when the query is a plain integer; `$containsi` on an
+   * One `$or` over every searchable path. `id` is numeric, so it is only added —
+   * as an equality — when the query is a plain integer; `$containsi` on an
    * integer column is rejected by Postgres and misbehaves elsewhere.
+   * `documentId` is always matched as a string.
    */
   buildFilters(descriptor, query) {
-    const conditions = [];
+    const conditions = [{ documentId: { $containsi: query } }];
 
     if (/^\d+$/.test(query)) {
       conditions.push({ id: { $eq: Number(query) } });
     }
 
     this.searchablePaths(descriptor).forEach((path) => {
+      if (path === 'documentId') return;
       conditions.push(nest(path, { $containsi: query }));
     });
 
@@ -76,7 +78,7 @@ module.exports = () => ({
     const fields = Array.from(
       new Set(
         [
-          'id',
+          'documentId',
           ...descriptor.idFields,
           descriptor.mainField,
           ...descriptor.topLevelFields,
@@ -100,11 +102,11 @@ module.exports = () => ({
     if (populate) params.populate = populate;
 
     if (descriptor.draftAndPublish) {
-      params.publicationState = includeDrafts ? 'preview' : 'live';
+      params.status = includeDrafts ? 'draft' : 'published';
     }
 
     if (descriptor.localized) {
-      params.locale = locale && locale !== 'all' ? locale : 'all';
+      params.locale = locale && locale !== 'all' ? locale : '*';
     }
 
     return params;

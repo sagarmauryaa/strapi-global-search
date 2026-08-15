@@ -1,18 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import {
   Badge,
   Box,
   Button,
-  ContentLayout,
   Flex,
-  HeaderLayout,
   Loader,
   Main,
-  Option,
   Searchbar,
-  Select,
+  SearchForm,
+  SingleSelect,
+  SingleSelectOption,
   Table,
   Tbody,
   Td,
@@ -21,11 +20,11 @@ import {
   Tr,
   Typography,
 } from '@strapi/design-system';
-import { useFocusWhenNavigate } from '@strapi/helper-plugin';
-import useGlobalSearch from '../../hooks/useGlobalSearch';
-import useSearchableTypes from '../../hooks/useSearchableTypes';
-import { fetchLocales } from '../../api/searchApi';
-import Highlight from '../../components/Highlight';
+import { Layouts } from '@strapi/strapi/admin';
+import useGlobalSearch from '../hooks/useGlobalSearch';
+import useSearchableTypes from '../hooks/useSearchableTypes';
+import { fetchLocales } from '../api/searchApi';
+import { Highlight } from '../components/Highlight';
 
 const ClickableRow = styled(Tr)`
   cursor: pointer;
@@ -47,9 +46,7 @@ const Chip = styled(Box)`
 const PAGE_SIZES = [10, 20, 50];
 
 const HomePage = () => {
-  useFocusWhenNavigate();
-
-  const history = useHistory();
+  const navigate = useNavigate();
   const { contentTypes, settings, status: schemaStatus } = useSearchableTypes();
   const [pageSize, setPageSize] = useState(20);
   const [locales, setLocales] = useState([]);
@@ -161,8 +158,8 @@ const HomePage = () => {
         <Tbody>
           {results.map((hit) => (
             <ClickableRow
-              key={`${hit.contentTypeUid}-${hit.id}-${hit.locale || ''}`}
-              onClick={() => history.push(hit.adminUrl)}
+              key={`${hit.contentTypeUid}-${hit.documentId || hit.id}-${hit.locale || ''}`}
+              onClick={() => navigate(hit.adminUrl)}
             >
               <Td>
                 <Typography textColor="neutral800">{hit.contentTypeLabel}</Typography>
@@ -195,15 +192,7 @@ const HomePage = () => {
                 <Typography textColor="neutral600">{hit.locale || '—'}</Typography>
               </Td>
               <Td>
-                {hit.status ? (
-                  <Badge
-                    backgroundColor={hit.status === 'published' ? 'success100' : 'secondary100'}
-                  >
-                    {hit.status}
-                  </Badge>
-                ) : (
-                  <Typography textColor="neutral400">—</Typography>
-                )}
+                {hit.status ? <Badge>{hit.status}</Badge> : <Typography textColor="neutral400">—</Typography>}
               </Td>
               <Td>
                 <Typography textColor="neutral600">
@@ -219,7 +208,7 @@ const HomePage = () => {
 
   return (
     <Main aria-busy={search.status === 'loading'}>
-      <HeaderLayout
+      <Layouts.Header
         title="Global Search"
         subtitle={
           schemaStatus === 'success'
@@ -228,37 +217,39 @@ const HomePage = () => {
         }
       />
 
-      <ContentLayout>
+      <Layouts.Content>
         <Flex direction="column" alignItems="stretch" gap={4}>
           <Flex gap={2} alignItems="flex-end">
             <Box grow={1}>
-              <Searchbar
-                name="global-search"
-                value={search.query}
-                onChange={(event) => search.setQuery(event.target.value)}
-                onClear={() => search.setQuery('')}
-                clearLabel="Clear search"
-                placeholder="Search by id, name, or any text field…"
-              >
-                Search all content
-              </Searchbar>
+              <SearchForm>
+                <Searchbar
+                  name="global-search"
+                  value={search.query}
+                  onChange={(event) => search.setQuery(event.target.value)}
+                  onClear={() => search.setQuery('')}
+                  clearLabel="Clear search"
+                  placeholder="Search by id, name, or any text field…"
+                >
+                  Search all content
+                </Searchbar>
+              </SearchForm>
             </Box>
 
             {locales.length > 1 ? (
               <Box minWidth="16rem">
-                <Select
+                <SingleSelect
                   label="Locale"
                   value={search.locale}
                   onChange={search.setLocale}
                   size="S"
                 >
-                  <Option value="all">All locales</Option>
+                  <SingleSelectOption value="all">All locales</SingleSelectOption>
                   {locales.map((locale) => (
-                    <Option key={locale.code} value={locale.code}>
+                    <SingleSelectOption key={locale.code} value={locale.code}>
                       {locale.name || locale.code}
-                    </Option>
+                    </SingleSelectOption>
                   ))}
-                </Select>
+                </SingleSelect>
               </Box>
             ) : null}
           </Flex>
@@ -316,18 +307,18 @@ const HomePage = () => {
                     : ''}
                 </Typography>
                 <Box minWidth="7rem">
-                  <Select
+                  <SingleSelect
                     aria-label="Results per page"
-                    value={pageSize}
-                    onChange={setPageSize}
+                    value={String(pageSize)}
+                    onChange={(value) => setPageSize(Number(value))}
                     size="S"
                   >
                     {PAGE_SIZES.map((size) => (
-                      <Option key={size} value={size}>
+                      <SingleSelectOption key={size} value={String(size)}>
                         {`${size} / page`}
-                      </Option>
+                      </SingleSelectOption>
                     ))}
-                  </Select>
+                  </SingleSelect>
                 </Box>
               </Flex>
 
@@ -353,9 +344,10 @@ const HomePage = () => {
             </Flex>
           ) : null}
         </Flex>
-      </ContentLayout>
+      </Layouts.Content>
     </Main>
   );
 };
 
+export { HomePage };
 export default HomePage;

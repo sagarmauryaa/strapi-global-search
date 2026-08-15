@@ -32,7 +32,7 @@ module.exports = () => ({
 
   score(entry, descriptor, query) {
     const lowered = query.toLowerCase();
-    const idPaths = ['id', ...descriptor.idFields];
+    const idPaths = ['id', 'documentId', ...descriptor.idFields];
     const mainPaths = descriptor.mainField && descriptor.mainField !== 'id' ? [descriptor.mainField] : [];
 
     const attempts = [

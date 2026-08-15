@@ -1,22 +1,20 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import PropTypes from 'prop-types';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import {
   Box,
   Divider,
   Flex,
   Loader,
-  ModalBody,
-  ModalLayout,
+  Modal,
   TextInput,
   Typography,
   VisuallyHidden,
 } from '@strapi/design-system';
 import { Search } from '@strapi/icons';
-import useGlobalSearch from '../../hooks/useGlobalSearch';
-import useSearchableTypes from '../../hooks/useSearchableTypes';
-import { toAdminUrl } from '../../utils/adminBase';
-import ResultItem from '../ResultItem';
+import useGlobalSearch from '../hooks/useGlobalSearch';
+import useSearchableTypes from '../hooks/useSearchableTypes';
+import { toAdminUrl } from '../utils/adminBase';
+import { ResultItem } from './ResultItem';
 
 const ResultsScroller = styled(Box)`
   max-height: 45vh;
@@ -26,7 +24,7 @@ const ResultsScroller = styled(Box)`
 const PALETTE_PAGE_SIZE = 30;
 
 /**
- * Straplight-style command palette. It is rendered outside the admin's React
+ * Spotlight-style command palette. It is rendered outside the admin's React
  * tree, so navigation is a full URL assignment rather than a router push.
  */
 const SearchOverlay = ({ onClose }) => {
@@ -41,7 +39,6 @@ const SearchOverlay = ({ onClose }) => {
   const inputRef = useRef(null);
   const results = useMemo(() => search.data.results || [], [search.data]);
 
-  // The design system's focus trap grabs focus first; take it back on the next tick.
   useEffect(() => {
     const timer = setTimeout(() => inputRef.current && inputRef.current.focus(), 0);
 
@@ -72,7 +69,9 @@ const SearchOverlay = ({ onClose }) => {
       setActiveIndex((index) => (results.length ? (index + 1) % results.length : 0));
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      setActiveIndex((index) => (results.length ? (index - 1 + results.length) % results.length : 0));
+      setActiveIndex((index) =>
+        results.length ? (index - 1 + results.length) % results.length : 0
+      );
     } else if (event.key === 'Enter') {
       event.preventDefault();
       open(results[activeIndex], event.metaKey || event.ctrlKey);
@@ -116,7 +115,7 @@ const SearchOverlay = ({ onClose }) => {
     if (search.status === 'loading' && !results.length) {
       return (
         <Flex justifyContent="center" padding={6}>
-          <Loader small>Searching…</Loader>
+          <Loader>Searching…</Loader>
         </Flex>
       );
     }
@@ -133,7 +132,7 @@ const SearchOverlay = ({ onClose }) => {
       <ResultsScroller role="listbox" aria-label="Search results">
         {results.map((hit, index) => (
           <ResultItem
-            key={`${hit.contentTypeUid}-${hit.id}-${hit.locale || ''}`}
+            key={`${hit.contentTypeUid}-${hit.documentId || hit.id}-${hit.locale || ''}`}
             hit={hit}
             query={search.query.trim()}
             isActive={index === activeIndex}
@@ -146,51 +145,47 @@ const SearchOverlay = ({ onClose }) => {
   };
 
   return (
-    <ModalLayout onClose={onClose} labelledBy="global-search-palette-title">
-      <Box onKeyDown={onKeyDown}>
-        {/* `labelledBy` needs an element with text, which an input has none of. */}
-        <VisuallyHidden>
-          <Typography id="global-search-palette-title">Global search</Typography>
-        </VisuallyHidden>
+    <Modal.Root open onOpenChange={(open) => !open && onClose()}>
+      <Modal.Content>
+        <Box onKeyDown={onKeyDown}>
+          <VisuallyHidden>
+            <Typography id="global-search-palette-title">Global search</Typography>
+          </VisuallyHidden>
 
-        <Box paddingLeft={4} paddingRight={4} paddingTop={4} paddingBottom={3}>
-          <TextInput
-            ref={inputRef}
-            name="global-search-palette"
-            id="global-search-palette-input"
-            aria-label="Global search"
-            placeholder="Search all content…"
-            startAction={<Search aria-hidden />}
-            value={search.query}
-            onChange={(event) => search.setQuery(event.target.value)}
-            autoComplete="off"
-          />
-        </Box>
+          <Box paddingLeft={4} paddingRight={4} paddingTop={4} paddingBottom={3}>
+            <TextInput
+              ref={inputRef}
+              name="global-search-palette"
+              aria-label="Global search"
+              placeholder="Search all content…"
+              startIcon={<Search />}
+              value={search.query}
+              onChange={(event) => search.setQuery(event.target.value)}
+              autoComplete="off"
+            />
+          </Box>
 
-        <Divider />
+          <Divider />
 
-        <ModalBody padding={0}>{renderBody()}</ModalBody>
+          <Modal.Body>{renderBody()}</Modal.Body>
 
-        <Divider />
+          <Divider />
 
-        <Flex justifyContent="space-between" padding={3} paddingLeft={4} paddingRight={4}>
-          <Typography variant="pi" textColor="neutral500">
-            ↑ ↓ navigate · ↵ open · ⌘/Ctrl + ↵ new tab · esc close
-          </Typography>
-          {search.status === 'success' && search.data.pagination.total > 0 ? (
+          <Flex justifyContent="space-between" padding={3} paddingLeft={4} paddingRight={4}>
             <Typography variant="pi" textColor="neutral500">
-              {search.data.pagination.total} result{search.data.pagination.total === 1 ? '' : 's'}
-              {search.data.meta.capped ? '+' : ''}
+              ↑ ↓ navigate · ↵ open · ⌘/Ctrl + ↵ new tab · esc close
             </Typography>
-          ) : null}
-        </Flex>
-      </Box>
-    </ModalLayout>
+            {search.status === 'success' && search.data.pagination.total > 0 ? (
+              <Typography variant="pi" textColor="neutral500">
+                {search.data.pagination.total} result{search.data.pagination.total === 1 ? '' : 's'}
+                {search.data.meta.capped ? '+' : ''}
+              </Typography>
+            ) : null}
+          </Flex>
+        </Box>
+      </Modal.Content>
+    </Modal.Root>
   );
 };
 
-SearchOverlay.propTypes = {
-  onClose: PropTypes.func.isRequired,
-};
-
-export default SearchOverlay;
+export { SearchOverlay };

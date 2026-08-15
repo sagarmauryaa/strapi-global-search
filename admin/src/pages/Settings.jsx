@@ -1,12 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Box,
   Button,
-  ContentLayout,
   Flex,
   Grid,
-  GridItem,
-  HeaderLayout,
   Main,
   NumberInput,
   Table,
@@ -14,15 +11,15 @@ import {
   Td,
   Th,
   Thead,
-  ToggleInput,
+  Toggle,
   Tr,
   Typography,
 } from '@strapi/design-system';
 import { Check } from '@strapi/icons';
-import { LoadingIndicatorPage, useNotification, useRBAC } from '@strapi/helper-plugin';
-import { fetchAllTypes, fetchSettings, resetSettings, updateSettings } from '../../api/searchApi';
-import { invalidateSearchableTypes } from '../../hooks/useSearchableTypes';
-import pluginPermissions from '../../permissions';
+import { Layouts, Page, useNotification, useRBAC } from '@strapi/strapi/admin';
+import { fetchAllTypes, fetchSettings, resetSettings, updateSettings } from '../api/searchApi';
+import { invalidateSearchableTypes } from '../hooks/useSearchableTypes';
+import pluginPermissions from '../permissions';
 
 const NUMBER_FIELDS = [
   { name: 'minChars', label: 'Minimum characters', hint: 'Shorter queries are not sent to the server.' },
@@ -34,7 +31,7 @@ const NUMBER_FIELDS = [
 ];
 
 const SettingsPage = () => {
-  const toggleNotification = useNotification();
+  const { toggleNotification } = useNotification();
   const { allowedActions } = useRBAC(pluginPermissions);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -52,7 +49,7 @@ const SettingsPage = () => {
       setSettings(nextSettings);
       setContentTypes(schema.contentTypes || []);
     } catch (error) {
-      toggleNotification({ type: 'warning', message: 'Could not load global search settings.' });
+      toggleNotification({ type: 'danger', message: 'Could not load global search settings.' });
     } finally {
       setIsLoading(false);
     }
@@ -89,11 +86,13 @@ const SettingsPage = () => {
       toggleNotification({ type: 'success', message: 'Global search settings saved.' });
     } catch (error) {
       const message =
-        (error.response && error.response.data && error.response.data.error &&
+        (error.response &&
+          error.response.data &&
+          error.response.data.error &&
           error.response.data.error.message) ||
         'Could not save global search settings.';
 
-      toggleNotification({ type: 'warning', message });
+      toggleNotification({ type: 'danger', message });
     } finally {
       setIsSaving(false);
     }
@@ -107,19 +106,19 @@ const SettingsPage = () => {
       invalidateSearchableTypes();
       toggleNotification({ type: 'success', message: 'Defaults restored.' });
     } catch (error) {
-      toggleNotification({ type: 'warning', message: 'Could not restore defaults.' });
+      toggleNotification({ type: 'danger', message: 'Could not restore defaults.' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  if (isLoading || !settings) return <LoadingIndicatorPage />;
+  if (isLoading || !settings) return <Page.Loading />;
 
   const excluded = settings.excludedContentTypes || [];
 
   return (
     <Main>
-      <HeaderLayout
+      <Layouts.Header
         title="Global Search"
         subtitle="Tune how the search page and the Ctrl/Cmd + K palette query your content."
         primaryAction={
@@ -134,15 +133,15 @@ const SettingsPage = () => {
         }
       />
 
-      <ContentLayout>
+      <Layouts.Content>
         <Flex direction="column" alignItems="stretch" gap={6}>
           <Box background="neutral0" padding={6} hasRadius shadow="tableShadow">
             <Typography variant="delta">Search behaviour</Typography>
 
             <Box paddingTop={4}>
-              <Grid gap={4}>
+              <Grid.Root gap={4}>
                 {NUMBER_FIELDS.map((field) => (
-                  <GridItem key={field.name} col={4} s={12}>
+                  <Grid.Item key={field.name} col={4} s={12}>
                     <NumberInput
                       name={field.name}
                       label={field.label}
@@ -151,11 +150,11 @@ const SettingsPage = () => {
                       onValueChange={(value) => setField(field.name, value)}
                       disabled={!canEdit}
                     />
-                  </GridItem>
+                  </Grid.Item>
                 ))}
 
-                <GridItem col={4} s={12}>
-                  <ToggleInput
+                <Grid.Item col={4} s={12}>
+                  <Toggle
                     name="deep"
                     label="Search inside components"
                     hint="Also match fields nested in components."
@@ -165,10 +164,10 @@ const SettingsPage = () => {
                     onChange={(event) => setField('deep', event.target.checked)}
                     disabled={!canEdit}
                   />
-                </GridItem>
+                </Grid.Item>
 
-                <GridItem col={4} s={12}>
-                  <ToggleInput
+                <Grid.Item col={4} s={12}>
+                  <Toggle
                     name="includeDrafts"
                     label="Include drafts"
                     hint="Search unpublished entries too."
@@ -178,8 +177,8 @@ const SettingsPage = () => {
                     onChange={(event) => setField('includeDrafts', event.target.checked)}
                     disabled={!canEdit}
                   />
-                </GridItem>
-              </Grid>
+                </Grid.Item>
+              </Grid.Root>
             </Box>
           </Box>
 
@@ -241,10 +240,9 @@ const SettingsPage = () => {
                       </Typography>
                     </Td>
                     <Td>
-                      <ToggleInput
+                      <Toggle
                         name={`enabled-${type.uid}`}
                         aria-label={`Enable search for ${type.displayName}`}
-                        label=""
                         onLabel="On"
                         offLabel="Off"
                         checked={!excluded.includes(type.uid)}
@@ -258,9 +256,10 @@ const SettingsPage = () => {
             </Table>
           </Box>
         </Flex>
-      </ContentLayout>
+      </Layouts.Content>
     </Main>
   );
 };
 
+export { SettingsPage };
 export default SettingsPage;

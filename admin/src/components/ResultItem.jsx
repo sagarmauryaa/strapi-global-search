@@ -1,8 +1,6 @@
-import React from 'react';
-import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { Badge, Box, Flex, Typography } from '@strapi/design-system';
-import Highlight from '../Highlight';
+import { Highlight } from './Highlight';
 
 const Row = styled(Box)`
   cursor: pointer;
@@ -17,7 +15,7 @@ const Row = styled(Box)`
 `;
 
 /** One hit in the Cmd+K palette: identity first, then what actually matched. */
-const ResultItem = ({ hit, query, isActive, onSelect, onHover }) => (
+const ResultItem = ({ hit, query, isActive, onSelect, onHover = () => {} }) => (
   <Row
     $active={isActive}
     paddingTop={3}
@@ -28,7 +26,7 @@ const ResultItem = ({ hit, query, isActive, onSelect, onHover }) => (
     onMouseEnter={onHover}
     role="option"
     aria-selected={isActive}
-    id={`global-search-option-${hit.contentTypeUid}-${hit.id}`}
+    id={`global-search-option-${hit.contentTypeUid}-${hit.documentId || hit.id}`}
   >
     <Flex justifyContent="space-between" gap={4} alignItems="flex-start">
       <Box style={{ minWidth: 0, flex: 1 }}>
@@ -46,7 +44,7 @@ const ResultItem = ({ hit, query, isActive, onSelect, onHover }) => (
             <Typography variant="pi" textColor="neutral500">
               {hit.matchedFieldLabel}:{' '}
             </Typography>
-            <Typography variant="pi" as="span">
+            <Typography variant="pi" tag="span">
               <Highlight text={hit.matchedSnippet} query={query} />
             </Typography>
           </Box>
@@ -59,11 +57,7 @@ const ResultItem = ({ hit, query, isActive, onSelect, onHover }) => (
             {hit.locale}
           </Typography>
         ) : null}
-        {hit.status ? (
-          <Badge backgroundColor={hit.status === 'published' ? 'success100' : 'secondary100'}>
-            {hit.status}
-          </Badge>
-        ) : null}
+        {hit.status ? <Badge>{hit.status}</Badge> : null}
         <Typography variant="pi" textColor="neutral600">
           {hit.contentTypeLabel}
         </Typography>
@@ -72,16 +66,4 @@ const ResultItem = ({ hit, query, isActive, onSelect, onHover }) => (
   </Row>
 );
 
-ResultItem.defaultProps = {
-  onHover: () => {},
-};
-
-ResultItem.propTypes = {
-  hit: PropTypes.object.isRequired,
-  query: PropTypes.string.isRequired,
-  isActive: PropTypes.bool.isRequired,
-  onSelect: PropTypes.func.isRequired,
-  onHover: PropTypes.func,
-};
-
-export default ResultItem;
+export { ResultItem };

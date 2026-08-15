@@ -1,4 +1,4 @@
-import { getFetchClient } from '@strapi/helper-plugin';
+import { getFetchClient } from '@strapi/strapi/admin';
 import pluginId from '../pluginId';
 
 /**
@@ -47,7 +47,7 @@ export const resetSettings = async () => {
   return data;
 };
 
-/** i18n is optional — a 404 here just means the plugin is not installed. */
+/** i18n is optional — a 404 here just means locales are not configured. */
 export const fetchLocales = async () => {
   try {
     const { get } = getFetchClient();

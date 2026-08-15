@@ -9,13 +9,15 @@ const service = (strapi, name) => strapi.plugin(PLUGIN_ID).service(name);
 module.exports = ({ strapi }) => ({
   /** Content Manager deep-link for a hit. */
   buildAdminUrl(descriptor, entry) {
+    const localeQuery = entry.locale ? `?locale=${entry.locale}` : '';
+
     if (descriptor.kind === 'singleType') {
-      const base = `/content-manager/singleType/${descriptor.uid}`;
-      return entry.locale ? `${base}?plugins[i18n][locale]=${entry.locale}` : base;
+      return `/content-manager/single-types/${descriptor.uid}${localeQuery}`;
     }
 
-    const base = `/content-manager/collectionType/${descriptor.uid}/${entry.id}`;
-    return entry.locale ? `${base}?plugins[i18n][locale]=${entry.locale}` : base;
+    const documentId = entry.documentId || entry.id;
+
+    return `/content-manager/collection-types/${descriptor.uid}/${documentId}${localeQuery}`;
   },
 
   async queryContentType(descriptor, { query, locale, settings }) {
@@ -28,9 +30,8 @@ module.exports = ({ strapi }) => ({
 
     if (!params) return [];
 
-    const result = await strapi.entityService.findMany(descriptor.uid, params);
+    const result = await strapi.documents(descriptor.uid).findMany(params);
 
-    // Single types resolve to an object (or null), collection types to an array.
     return Array.isArray(result) ? result : [result].filter(Boolean);
   },
 
@@ -49,7 +50,7 @@ module.exports = ({ strapi }) => ({
         (descriptor.mainField && entry[descriptor.mainField]) ||
         entry.name ||
         entry.title ||
-        `#${entry.id}`,
+        `#${entry.documentId || entry.id}`,
       mainField: descriptor.mainField,
       extra: extraFields.map((field) => ({ field, value: entry[field] ?? null })),
       locale: entry.locale || null,

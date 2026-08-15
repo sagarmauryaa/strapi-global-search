@@ -62,7 +62,7 @@ const components = {
 
 const rows = {
   'api::article.article': [
-    { id: 7, title: 'Careers', slug: 'careers', body: 'x', updatedAt: '2026-01-01', publishedAt: '2026-01-01', locale: 'en' },
+    { id: 7, documentId: 'doc-careers', title: 'Careers', slug: 'careers', body: 'x', updatedAt: '2026-01-01', publishedAt: '2026-01-01', locale: 'en' },
     { id: 12, title: 'Career advice', slug: 'career-advice', body: 'y', updatedAt: '2026-02-01', publishedAt: null, locale: 'en' },
     { id: 3, title: 'Random', slug: 'random', body: 'we are hiring for careers now', updatedAt: '2026-03-01', publishedAt: '2026-03-01', locale: 'en' },
     { id: 9, title: 'Nested', slug: 'nested', body: 'z', updatedAt: '2026-04-01', locale: 'en', seo: { metaTitle: 'careers page' } },
@@ -93,14 +93,14 @@ const strapi = {
 
     return { service: (name) => services[name] };
   },
-  entityService: {
-    findMany: async (uid, params) => {
+  documents: (uid) => ({
+    findMany: async (params) => {
       lastParams = { uid, params };
       const data = rows[uid];
-      if (!data) return contentTypes[uid].kind === 'singleType' ? null : [];
-      return data;
+      if (!data) return [];
+      return Array.isArray(data) ? data : [data];
     },
-  },
+  }),
   admin: { services: { permission: { actionProvider: { registerMany() {} } } } },
 };
 
@@ -125,15 +125,16 @@ const run = async () => {
   const article = types.find((t) => t.uid === 'api::article.article');
   const homepage = types.find((t) => t.uid === 'api::homepage.homepage');
 
-  check('discovers collection + single types', () => assert.strictEqual(types.length, 2));
-  check('drops types with nothing searchable', () =>
-    assert.ok(!types.find((t) => t.uid === 'api::secret.secret')));
+  check('discovers collection + single types', () => assert.strictEqual(types.length, 3));
+  check('types with no text fields remain searchable by documentId', () =>
+    assert.ok(types.find((t) => t.uid === 'api::secret.secret')));
   check('resolves mainField from content-manager config', () =>
     assert.strictEqual(article.mainField, 'title'));
   check('detects single type kind', () => assert.strictEqual(homepage.kind, 'singleType'));
   check('detects i18n + draft&publish', () =>
     assert.ok(article.localized && article.draftAndPublish));
-  check('collects id fields', () => assert.deepStrictEqual(article.idFields, ['slug']));
+  check('collects id fields including documentId', () =>
+    assert.deepStrictEqual(article.idFields, ['documentId', 'slug']));
   check('collects top-level string fields, minus mainField/id fields', () =>
     assert.deepStrictEqual(article.topLevelFields.sort(), ['body']));
   check('skips media/relation/json/dynamiczone/private/password', () => {
@@ -153,10 +154,12 @@ const run = async () => {
   const filtersText = services.query.buildFilters(article, 'careers');
   const filtersNumeric = services.query.buildFilters(article, '42');
 
+  check('always matches documentId as a string', () =>
+    assert.deepStrictEqual(filtersText.$or[0], { documentId: { $containsi: 'careers' } }));
   check('no $eq on numeric id for a text query', () =>
     assert.ok(!JSON.stringify(filtersText).includes('"$eq"')));
   check('adds id $eq for a numeric query', () =>
-    assert.deepStrictEqual(filtersNumeric.$or[0], { id: { $eq: 42 } }));
+    assert.ok(filtersNumeric.$or.some((c) => c.id && c.id.$eq === 42)));
   check('nests component paths', () =>
     assert.ok(
       filtersText.$or.some(
@@ -181,13 +184,13 @@ const run = async () => {
     assert.ok(params.fields.includes('title') && params.fields.includes('publishedAt'));
     assert.ok(!params.fields.includes('id'));
   });
-  check('passes publicationState + locale for i18n/D&P types', () => {
-    assert.strictEqual(params.publicationState, 'preview');
-    assert.strictEqual(params.locale, 'all');
+  check('passes status + locale for i18n/D&P types', () => {
+    assert.strictEqual(params.status, 'draft');
+    assert.strictEqual(params.locale, '*');
   });
-  check('omits locale/publicationState for plain types', () => {
+  check('omits locale/status for plain types', () => {
     const plain = services.query.buildParams(homepage, { query: 'x', limit: 5, includeDrafts: true });
-    assert.ok(!('locale' in plain) && !('publicationState' in plain));
+    assert.ok(!('locale' in plain) && !('status' in plain));
   });
 
   console.log('\n== ranking ==');
@@ -229,12 +232,12 @@ const run = async () => {
   check('single type is included and linked correctly', () => {
     const single = result.results.find((h) => h.kind === 'singleType');
     assert.ok(single, 'homepage single type missing');
-    assert.strictEqual(single.adminUrl, '/content-manager/singleType/api::homepage.homepage');
+    assert.strictEqual(single.adminUrl, '/content-manager/single-types/api::homepage.homepage');
   });
-  check('collection links carry the locale', () =>
+  check('collection links use documentId and locale', () =>
     assert.strictEqual(
       result.results.find((h) => h.id === 7).adminUrl,
-      '/content-manager/collectionType/api::article.article/7?plugins[i18n][locale]=en'
+      '/content-manager/collection-types/api::article.article/doc-careers?locale=en'
     ));
   check('draft/published status is reported', () => {
     const draft = result.results.find((h) => h.id === 12);
@@ -273,13 +276,15 @@ const run = async () => {
   });
 
   console.log('\n== resilience ==');
-  const original = strapi.entityService.findMany;
-  strapi.entityService.findMany = async (uid, p) => {
-    if (uid === 'api::article.article') throw new Error('boom');
-    return original(uid, p);
-  };
+  const originalDocuments = strapi.documents;
+  strapi.documents = (uid) => ({
+    findMany: async (params) => {
+      if (uid === 'api::article.article') throw new Error('boom');
+      return originalDocuments(uid).findMany(params);
+    },
+  });
   const partial = await services.search.search({ query: 'careers' });
-  strapi.entityService.findMany = original;
+  strapi.documents = originalDocuments;
 
   check('one broken content type does not fail the whole search', () => {
     assert.ok(partial.results.length > 0);

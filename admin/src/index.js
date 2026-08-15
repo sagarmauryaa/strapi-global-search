@@ -1,34 +1,27 @@
-import { prefixPluginTranslations } from '@strapi/helper-plugin';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import pluginPkg from '../../package.json';
 import pluginId from './pluginId';
 import pluginPermissions from './permissions';
-import Initializer from './components/Initializer';
-import PluginIcon from './components/PluginIcon';
-import GlobalSearchPortal from './components/GlobalSearchPortal';
+import { Initializer } from './components/Initializer';
+import { PluginIcon } from './components/PluginIcon';
+import { GlobalSearchPortal } from './components/GlobalSearchPortal';
 
-const name = pluginPkg.strapi.name;
 const PORTAL_ROOT_ID = 'global-search-portal-root';
 
 export default {
   register(app) {
     app.addMenuLink({
-      to: `/plugins/${pluginId}`,
+      to: `plugins/${pluginId}`,
       icon: PluginIcon,
       intlLabel: {
         id: `${pluginId}.plugin.name`,
         defaultMessage: 'Global Search',
       },
       permissions: pluginPermissions.main,
-      Component: async () => {
-        const component = await import('./pages/App');
-
-        return component;
-      },
+      Component: () => import('./pages/App'),
     });
 
-    app.createSettingSection(
+    app.addSettingsLink(
       {
         id: pluginId,
         intlLabel: { id: `${pluginId}.settings.section`, defaultMessage: 'Global Search' },
@@ -37,13 +30,9 @@ export default {
         {
           intlLabel: { id: `${pluginId}.settings.link`, defaultMessage: 'Configuration' },
           id: `${pluginId}-settings`,
-          to: `/settings/${pluginId}`,
+          to: pluginId,
           permissions: pluginPermissions.settings,
-          Component: async () => {
-            const component = await import('./pages/Settings');
-
-            return component;
-          },
+          Component: () => import('./pages/Settings'),
         },
       ]
     );
@@ -52,14 +41,13 @@ export default {
       id: pluginId,
       initializer: Initializer,
       isReady: false,
-      name,
+      name: pluginId,
     });
   },
 
   /**
-   * Strapi v4 has no injection zone that renders on every admin screen, and plugin
-   * initializers are unmounted once the app is ready — so the Ctrl/Cmd + K palette
-   * gets its own React root on `document.body`, outside the admin tree.
+   * The Ctrl/Cmd + K palette is mounted on document.body so it is available on
+   * every admin screen, not only the plugin page.
    */
   bootstrap() {
     if (typeof document === 'undefined' || document.getElementById(PORTAL_ROOT_ID)) return;
@@ -72,14 +60,21 @@ export default {
   },
 
   async registerTrads({ locales }) {
-    const importedTrads = await Promise.all(
-      locales.map((locale) =>
-        import(`./translations/${locale}.json`)
-          .then(({ default: data }) => ({ data: prefixPluginTranslations(data, pluginId), locale }))
-          .catch(() => ({ data: {}, locale }))
-      )
-    );
+    return Promise.all(
+      locales.map(async (locale) => {
+        try {
+          const { default: data } = await import(`./translations/${locale}.json`);
+          const prefixed = {};
 
-    return Promise.resolve(importedTrads);
+          Object.keys(data).forEach((key) => {
+            prefixed[`${pluginId}.${key}`] = data[key];
+          });
+
+          return { data: prefixed, locale };
+        } catch {
+          return { data: {}, locale };
+        }
+      })
+    );
   },
 };

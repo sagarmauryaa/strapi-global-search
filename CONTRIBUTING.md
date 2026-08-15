@@ -2,20 +2,17 @@
 
 ## Local development
 
-Link this folder into a Strapi v4 app as a plugin (Node 18–20):
+Link this folder into a Strapi v5 app (Node 20–26):
 
 ```bash
 # in this repo
-npm install
 npm test
 
 # in your Strapi app
 npm install /absolute/path/to/strapi-global-search
-npm run build
-npm run develop
 ```
 
-No `config/plugins.js` entry is needed for an npm install. Only local copies under `src/plugins` need `resolve`.
+Enable the plugin in `config/plugins.js` / `config/plugins.ts` if needed, then start the app. There is no package-level build step.
 
 ## Tests
 
@@ -34,8 +31,8 @@ Publishing uses [trusted publishing](https://docs.npmjs.com/trusted-publishers/)
 3. Tag and push:
 
    ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
+   git tag v2.0.0
+   git push origin v2.0.0
    ```
 
 4. The `publish.yml` workflow runs `npm test` then `npm publish --access public`.
