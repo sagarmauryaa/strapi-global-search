@@ -37,7 +37,7 @@ module.exports = {
 };
 ```
 
-Then start your Strapi app (`npm run develop`). There is no extra build step for this package.
+Then start your Strapi app (`npm run develop`). There is no extra build step.
 
 This package has **no** `preinstall` / `install` / `postinstall` scripts and does not use git or remote URL dependencies. On [npm v12](https://github.blog/changelog/2026-07-08-npm-install-time-security-and-gat-bypass2fa-deprecation/) you do not need an `allowScripts` entry for `strapi-global-search`.
 

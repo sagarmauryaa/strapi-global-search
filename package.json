@@ -24,15 +24,16 @@
     "./strapi-admin": "./admin/src/index.ts",
     "./strapi-server": "./server/index.ts"
   },
-  "main": "./strapi-server.js",
+  "main": "./server/index.ts",
   "scripts": {
-    "test": "tsx tests/services.test.js"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "test": "tsx tests/services.test.ts"
   },
   "files": [
     "admin",
     "server",
-    "strapi-admin.js",
-    "strapi-server.js",
+    "strapi-admin.ts",
+    "strapi-server.ts",
     "README.md",
     "LICENSE"
   ],
@@ -44,6 +45,13 @@
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
     "styled-components": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
   },
   "author": {
     "name": "Sagar Maurya",
@@ -72,8 +80,5 @@
     "node": ">=20.0.0 <=26.x.x",
     "npm": ">=6.0.0"
   },
-  "license": "MIT",
-  "devDependencies": {
-    "tsx": "^4.23.12"
-  }
+  "license": "MIT"
 }

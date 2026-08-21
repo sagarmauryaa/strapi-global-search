@@ -2,25 +2,27 @@
 
 ## Local development
 
-Link this folder into a Strapi v5 app (Node 20–26):
+This package ships TypeScript sources. Strapi loads the admin and server entrypoints directly — there is no package-level build step.
 
 ```bash
 # in this repo
+npm install
 npm test
 
 # in your Strapi app
 npm install /absolute/path/to/strapi-global-search
 ```
 
-Enable the plugin in `config/plugins.js` / `config/plugins.ts` if needed, then start the app. There is no package-level build step.
+Enable the plugin in `config/plugins.js` / `config/plugins.ts` if needed, then start the app.
 
 ## Tests
 
 ```bash
 npm test
+npm run typecheck
 ```
 
-Tests run with Node only (`tests/services.test.js`). They do not boot Strapi or a database.
+Tests run with `tsx` against the TypeScript sources (`tests/services.test.ts`). They do not boot Strapi or a database.
 
 ## Release
 

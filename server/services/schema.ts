@@ -8,13 +8,13 @@ import {
 } from '../utils/constants';
 import type { ContentTypeDescriptor, PluginSettings, StrapiLike } from '../types';
 
-interface AttributeLike {
+export interface AttributeLike {
   type?: string;
   private?: boolean;
   component?: string;
 }
 
-interface ContentTypeLike {
+export interface ContentTypeLike {
   uid: string;
   kind?: string;
   apiName?: string;

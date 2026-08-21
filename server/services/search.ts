@@ -12,7 +12,7 @@ import type {
 
 const service = (strapi: StrapiLike, name: string) => strapi.plugin(PLUGIN_ID).service(name);
 
-interface EntryLike {
+export interface EntryLike {
   id: string | number;
   documentId?: string;
   locale?: string;

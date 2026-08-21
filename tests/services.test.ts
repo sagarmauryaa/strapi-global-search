@@ -1,15 +1,16 @@
 /**
  * Exercises the global-search plugin services against a fake Strapi instance.
- * No Strapi boot, no database, no test runner: `node tests/services.test.js`.
+ * No Strapi boot, no database, no test runner: `npm test` (tsx).
  */
-'use strict';
+import assert from 'assert';
+import type { StrapiLike } from '../server/types';
 
-const assert = require('assert');
-
-const load = (name) => {
-  const mod = require(`../server/services/${name}`);
-  return mod.default || mod;
-};
+import schemaFactory from '../server/services/schema';
+import queryFactory from '../server/services/query';
+import rankingFactory from '../server/services/ranking';
+import permissionsFactory from '../server/services/permissions';
+import settingsFactory from '../server/services/settings';
+import searchFactory from '../server/services/search';
 
 const contentTypes = {
   'api::article.article': {
@@ -63,7 +64,7 @@ const components = {
   'shared.tag': { attributes: { label: { type: 'string' } } },
 };
 
-const rows = {
+const rows: Record<string, unknown> = {
   'api::article.article': [
     { id: 7, documentId: 'doc-careers', title: 'Careers', slug: 'careers', body: 'x', updatedAt: '2026-01-01', publishedAt: '2026-01-01', locale: 'en' },
     { id: 12, title: 'Career advice', slug: 'career-advice', body: 'y', updatedAt: '2026-02-01', publishedAt: null, locale: 'en' },
@@ -74,31 +75,37 @@ const rows = {
   'api::homepage.homepage': { id: 1, name: 'careers', intro: 'hello', updatedAt: '2026-01-05' },
 };
 
-let lastParams = null;
-const services = {};
+const services: Record<string, any> = {};
 
-const strapi = {
+const strapi: StrapiLike = {
   contentTypes,
   components,
   config: { get: () => ({}) },
   store: () => ({ get: async () => ({}), set: async () => {} }),
-  log: { debug() {}, warn(msg) { console.log('  [warn]', msg); }, error(msg) { console.log('  [error]', msg); } },
-  plugin: (id) => {
+  log: {
+    debug() {},
+    warn(msg: string) {
+      console.log('  [warn]', msg);
+    },
+    error(msg: string) {
+      console.log('  [error]', msg);
+    },
+  },
+  plugin: (id: string) => {
     if (id === 'content-manager') {
       return {
         service: () => ({
-          findConfiguration: async (ct) => ({
+          findConfiguration: async (ct: { uid: string }) => ({
             settings: { mainField: ct.uid === 'api::article.article' ? 'title' : 'name' },
           }),
         }),
       };
     }
 
-    return { service: (name) => services[name] };
+    return { service: (name: string) => services[name] };
   },
-  documents: (uid) => ({
-    findMany: async (params) => {
-      lastParams = { uid, params };
+  documents: (uid: string) => ({
+    findMany: async () => {
       const data = rows[uid];
       if (!data) return [];
       return Array.isArray(data) ? data : [data];
@@ -107,30 +114,33 @@ const strapi = {
   admin: { services: { permission: { actionProvider: { registerMany() {} } } } },
 };
 
-['schema', 'query', 'ranking', 'permissions', 'settings', 'search'].forEach((name) => {
-  services[name] = load(name)({ strapi });
-});
+services.schema = schemaFactory({ strapi });
+services.query = queryFactory();
+services.ranking = rankingFactory();
+services.permissions = permissionsFactory();
+services.settings = settingsFactory({ strapi });
+services.search = searchFactory({ strapi });
 
 const run = async () => {
   let failures = 0;
-  const check = (label, fn) => {
+  const check = (label: string, fn: () => void) => {
     try {
       fn();
       console.log(`  PASS  ${label}`);
     } catch (error) {
       failures += 1;
-      console.log(`  FAIL  ${label}\n        ${error.message}`);
+      console.log(`  FAIL  ${label}\n        ${(error as Error).message}`);
     }
   };
 
   console.log('\n== schema introspection ==');
   const types = await services.schema.getSearchableContentTypes();
-  const article = types.find((t) => t.uid === 'api::article.article');
-  const homepage = types.find((t) => t.uid === 'api::homepage.homepage');
+  const article = types.find((t: { uid: string }) => t.uid === 'api::article.article');
+  const homepage = types.find((t: { uid: string }) => t.uid === 'api::homepage.homepage');
 
   check('discovers collection + single types', () => assert.strictEqual(types.length, 3));
   check('types with no text fields remain searchable by documentId', () =>
-    assert.ok(types.find((t) => t.uid === 'api::secret.secret')));
+    assert.ok(types.find((t: { uid: string }) => t.uid === 'api::secret.secret')));
   check('resolves mainField from content-manager config', () =>
     assert.strictEqual(article.mainField, 'title'));
   check('detects single type kind', () => assert.strictEqual(homepage.kind, 'singleType'));
@@ -151,7 +161,7 @@ const run = async () => {
     assert.ok(article.nestedFields.includes('tags.label'));
   });
   check('breaks component cycles instead of hanging', () =>
-    assert.ok(!article.nestedFields.some((p) => p.split('.').length > 4)));
+    assert.ok(!article.nestedFields.some((p: string) => p.split('.').length > 4)));
 
   console.log('\n== query builder ==');
   const filtersText = services.query.buildFilters(article, 'careers');
@@ -162,11 +172,11 @@ const run = async () => {
   check('no $eq on numeric id for a text query', () =>
     assert.ok(!JSON.stringify(filtersText).includes('"$eq"')));
   check('adds id $eq for a numeric query', () =>
-    assert.ok(filtersNumeric.$or.some((c) => c.id && c.id.$eq === 42)));
+    assert.ok(filtersNumeric.$or.some((c: any) => c.id && c.id.$eq === 42)));
   check('nests component paths', () =>
     assert.ok(
       filtersText.$or.some(
-        (c) => c.seo && c.seo.social && c.seo.social.handle && c.seo.social.handle.$containsi === 'careers'
+        (c: any) => c.seo && c.seo.social && c.seo.social.handle && c.seo.social.handle.$containsi === 'careers'
       )
     ));
   check('builds a nested populate tree only for searched components', () => {
@@ -197,7 +207,7 @@ const run = async () => {
   });
 
   console.log('\n== ranking ==');
-  const tier = (entry) => services.ranking.score(entry, article, 'careers').tier;
+  const tier = (entry: unknown) => services.ranking.score(entry, article, 'careers').tier;
   check('id exact beats everything', () =>
     assert.strictEqual(services.ranking.score({ id: 7, slug: 'careers' }, article, 'careers').tier, 0));
   check('name exact -> tier 2', () => assert.strictEqual(tier({ id: 1, title: 'Careers' }), 2));
@@ -222,32 +232,32 @@ const run = async () => {
 
   console.log('\n== search end to end ==');
   const result = await services.search.search({ query: 'careers', pageSize: 10 });
-  const order = result.results.map((h) => `${h.contentTypeUid}#${h.id}:${h.tierLabel}`);
+  const order = result.results.map((h: any) => `${h.contentTypeUid}#${h.id}:${h.tierLabel}`);
   console.log('  order:', order.join('\n         '));
 
   check('ranks id > name-exact > starts-with > contains > field > nested', () =>
     assert.deepStrictEqual(
-      result.results.map((h) => h.tier),
-      [...result.results.map((h) => h.tier)].sort((a, b) => a - b)
+      result.results.map((h: any) => h.tier),
+      [...result.results.map((h: any) => h.tier)].sort((a: number, b: number) => a - b)
     ));
   check('slug "careers" wins the top spot', () =>
     assert.strictEqual(result.results[0].id, 7));
   check('single type is included and linked correctly', () => {
-    const single = result.results.find((h) => h.kind === 'singleType');
+    const single = result.results.find((h: any) => h.kind === 'singleType');
     assert.ok(single, 'homepage single type missing');
     assert.strictEqual(single.adminUrl, '/content-manager/single-types/api::homepage.homepage');
   });
   check('collection links use documentId and locale', () =>
     assert.strictEqual(
-      result.results.find((h) => h.id === 7).adminUrl,
+      result.results.find((h: any) => h.id === 7).adminUrl,
       '/content-manager/collection-types/api::article.article/doc-careers?locale=en'
     ));
   check('draft/published status is reported', () => {
-    const draft = result.results.find((h) => h.id === 12);
+    const draft = result.results.find((h: any) => h.id === 12);
     assert.strictEqual(draft.status, 'draft');
   });
   check('groups summarise per content type', () =>
-    assert.strictEqual(result.groups.reduce((sum, g) => sum + g.count, 0), result.pagination.total));
+    assert.strictEqual(result.groups.reduce((sum: number, g: any) => sum + g.count, 0), result.pagination.total));
 
   const short = await services.search.search({ query: 'a' });
   check('queries below minChars return nothing', () =>
@@ -259,17 +269,17 @@ const run = async () => {
 
   const denied = await services.search.search({
     query: 'careers',
-    userAbility: { can: (action, uid) => uid === 'api::homepage.homepage' },
+    userAbility: { can: (_action: string, uid: string) => uid === 'api::homepage.homepage' },
   });
   check('RBAC filter hides content types the user cannot read', () =>
-    assert.ok(denied.results.every((h) => h.contentTypeUid === 'api::homepage.homepage')));
+    assert.ok(denied.results.every((h: any) => h.contentTypeUid === 'api::homepage.homepage')));
 
   const filtered = await services.search.search({
     query: 'careers',
     types: ['api::homepage.homepage'],
   });
   check('type filter is honoured', () =>
-    assert.ok(filtered.results.every((h) => h.contentTypeUid === 'api::homepage.homepage')));
+    assert.ok(filtered.results.every((h: any) => h.contentTypeUid === 'api::homepage.homepage')));
 
   const paged = await services.search.search({ query: 'careers', page: 2, pageSize: 2 });
   check('pagination slices the ranked set', () => {
@@ -280,8 +290,8 @@ const run = async () => {
 
   console.log('\n== resilience ==');
   const originalDocuments = strapi.documents;
-  strapi.documents = (uid) => ({
-    findMany: async (params) => {
+  strapi.documents = (uid: string) => ({
+    findMany: async (params: unknown) => {
       if (uid === 'api::article.article') throw new Error('boom');
       return originalDocuments(uid).findMany(params);
     },
