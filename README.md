@@ -8,13 +8,11 @@ Spotlight-style **global search** for the Strapi v5 admin: every collection type
 
 Install it, enable it, and start Strapi. It introspects your content types at boot and never needs to know your schema ahead of time.
 
-> Add a screenshot or short GIF of the palette here (`docs/palette.png`) once you have one.
-
 **Strapi 4:** use [`strapi-global-search@1.x`](https://www.npmjs.com/package/strapi-global-search/v/1.0.0). This major (`2.x`) is Strapi 5 only.
 
 ## Features
 
-- **Searches everything** — every `api::` collection type *and* single type, including text fields nested inside components.
+- **Searches everything** — every `api::` collection type _and_ single type, including text fields nested inside components.
 - **Two surfaces** — a full search page under the plugins menu, and a command palette available from anywhere in the admin.
 - **Predictable ordering** — results are ranked id → name → other fields → nested fields (see below), never by an opaque relevance score.
 - **Respects your permissions** — an editor only ever sees content types they can read in the Content Manager.
@@ -33,9 +31,9 @@ Enable it in `config/plugins.js` or `config/plugins.ts`:
 
 ```js
 module.exports = {
-  'global-search': {
-    enabled: true,
-  },
+	"global-search": {
+		enabled: true,
+	},
 };
 ```
 
@@ -45,15 +43,15 @@ This package has **no** `preinstall` / `install` / `postinstall` scripts and doe
 
 ## Result ordering
 
-| Priority | Match |
-|---|---|
-| 1 | `id` / `documentId` exact |
-| 2 | `id` / `documentId` partial |
-| 3 | Name (the Content Manager main field) exact |
-| 4 | Name starts with the query |
-| 5 | Name contains the query |
-| 6 | Any other top-level text field |
-| 7 | Any text field inside a component |
+| Priority | Match                                       |
+| -------- | ------------------------------------------- |
+| 1        | `id` / `documentId` exact                   |
+| 2        | `id` / `documentId` partial                 |
+| 3        | Name (the Content Manager main field) exact |
+| 4        | Name starts with the query                  |
+| 5        | Name contains the query                     |
+| 6        | Any other top-level text field              |
+| 7        | Any text field inside a component           |
 
 Ties break on an exact-case match, then the shortest matching value, then the most recently updated entry.
 
@@ -63,23 +61,23 @@ Everything is optional and can be changed at **Settings → Global Search → Co
 
 ```js
 module.exports = {
-  'global-search': {
-    enabled: true,
-    config: {
-      minChars: 2,             // minimum query length
-      debounce: 250,           // ms to wait after the last keystroke
-      perTypeLimit: 20,        // rows fetched per content type
-      maxResults: 100,         // cap on the merged, ranked result set
-      deep: true,              // search inside components
-      maxDepth: 3,             // how many component levels to walk
-      includeDrafts: true,     // include unpublished entries
-      queryTimeout: 4000,      // per-content-type timeout in ms
-      concurrency: 8,          // content types queried in parallel
-      excludedContentTypes: [],// e.g. ['api::log.log']
-      excludedFields: [],      // e.g. ['api::article.article:body']
-      displayFields: {},       // extra fields in the result row, keyed by UID
-    },
-  },
+	"global-search": {
+		enabled: true,
+		config: {
+			minChars: 2, // minimum query length
+			debounce: 250, // ms to wait after the last keystroke
+			perTypeLimit: 20, // rows fetched per content type
+			maxResults: 100, // cap on the merged, ranked result set
+			deep: true, // search inside components
+			maxDepth: 3, // how many component levels to walk
+			includeDrafts: true, // include unpublished entries
+			queryTimeout: 4000, // per-content-type timeout in ms
+			concurrency: 8, // content types queried in parallel
+			excludedContentTypes: [], // e.g. ['api::log.log']
+			excludedFields: [], // e.g. ['api::article.article:body']
+			displayFields: {}, // extra fields in the result row, keyed by UID
+		},
+	},
 };
 ```
 
@@ -106,11 +104,11 @@ Reported result counts reflect the capped set (`perTypeLimit` rows per type, `ma
 
 ## Compatibility
 
-| | |
-|---|---|
+|        |                                     |
+| ------ | ----------------------------------- |
 | Strapi | `^5.0.0` (developed against 5.52.0) |
-| Node | 20 – 26 |
-| React | 18 |
+| Node   | 20 – 26                             |
+| React  | 18                                  |
 
 ## Publishing and supply chain
 

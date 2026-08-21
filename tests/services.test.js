@@ -6,7 +6,10 @@
 
 const assert = require('assert');
 
-const load = (name) => require(`../server/services/${name}`);
+const load = (name) => {
+  const mod = require(`../server/services/${name}`);
+  return mod.default || mod;
+};
 
 const contentTypes = {
   'api::article.article': {

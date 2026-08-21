@@ -22,11 +22,11 @@
   "exports": {
     "./package.json": "./package.json",
     "./strapi-admin": "./admin/src/index.ts",
-    "./strapi-server": "./server/index.js"
+    "./strapi-server": "./server/index.ts"
   },
   "main": "./strapi-server.js",
   "scripts": {
-    "test": "node tests/services.test.js"
+    "test": "tsx tests/services.test.js"
   },
   "files": [
     "admin",
@@ -72,5 +72,8 @@
     "node": ">=20.0.0 <=26.x.x",
     "npm": ">=6.0.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "tsx": "^4.23.12"
+  }
 }
