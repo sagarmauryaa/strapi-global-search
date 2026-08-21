@@ -21,7 +21,7 @@
   },
   "exports": {
     "./package.json": "./package.json",
-    "./strapi-admin": "./admin/src/index.js",
+    "./strapi-admin": "./admin/src/index.ts",
     "./strapi-server": "./server/index.js"
   },
   "main": "./strapi-server.js",
